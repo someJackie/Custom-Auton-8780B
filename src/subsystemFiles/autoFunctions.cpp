@@ -122,11 +122,18 @@ double coords[2]={0,0};
 double velocityV[2]={0,0};
 void calculateCoords(){
     while (true){
-        double dt = 0.0020;
+        double deltat = 0.0020;
         pros::c::imu_accel_s_t accel = imuSensor.get_accel();
         //use kinematics formula delta(x)=vt*.5at^2
-        
 
+        coords[0] = coords[0] + velocityV[0]*deltat+.5*accel.x*(deltat*deltat);
+        coords[1] = coords[1] + velocityV[1]*deltat+.5*accel.y*(deltat*deltat);
+
+        //calculate velocity (After position because initial velocity is 0 and this is the next initial velocity)
+
+        velocityV[0] = velocityV[0] + accel.x*deltat;
+        velocityV[1] = velocityV[1] + accel.y*deltat;
+        
         pros::delay(20);
     }
 }
