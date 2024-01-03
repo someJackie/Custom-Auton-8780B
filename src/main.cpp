@@ -18,9 +18,21 @@ void on_center_button() {
 
 void screen(){
 	while (true){
-	pros::lcd::print(0,"rightDown: %f", rightDown.get_position());
-	pros::lcd::print(1,"leftDown: %f", leftDown.get_position());
-	pros::delay(10);
+		pros::lcd::print(0,"rightDown: %f", rightDown.get_position());
+		pros::lcd::print(1,"leftDown: %f", leftDown.get_position());
+		pros::delay(10);
+	}
+}
+
+void encoderScreen(){
+	while (true){
+		pros::lcd::print(0,"rightUp: %f", rightUp.get_position());
+		pros::lcd::print(1,"rightMiddle: %f", rightMiddle.get_position());
+		pros::lcd::print(2,"rightDown: %f", rightDown.get_position());
+		pros::lcd::print(3,"leftUp: %f", leftUp.get_position());
+		pros::lcd::print(4,"leftMiddle: %f", leftMiddle.get_position());
+		pros::lcd::print(5,"leftDown: %f", leftDown.get_position());
+		pros::delay(10);
 	}
 }
 
@@ -37,7 +49,7 @@ void initialize() {
 	pros::lcd::register_btn1_cb(on_center_button);
 	driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 
-	pros::Task screenTask(screen);
+	pros::Task screenTask(encoderScreen);
 
 }
 
@@ -71,7 +83,9 @@ void competition_initialize() {}
  * from where it left off.
  */
 void autonomous() {
-	driveE(50,10);
+	driveMotors.move(30);
+	pros::delay(10000); //10 Seconds
+	driveMotors.move(0);
 }
 
 /**
