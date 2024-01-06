@@ -1,4 +1,5 @@
 #include "main.h"
+#include <numeric>
 
 /**
  * A callback function for LLEMU's center button.
@@ -85,9 +86,71 @@ void competition_initialize() {}
  * from where it left off.
  */
 void autonomous() {
+	//Testing Encoders
 	driveMotors.move(30);
 	pros::delay(10000); //10 Seconds
 	driveMotors.move(0);
+	//Skills Auton Path
+
+	//Push Triball into goal
+	driveE(100,-30);
+	turnE(50,30);
+	driveE(100,-5);
+	//Line up shooting
+	driveE(100,5);
+	turnE(50,45);
+	driveE(50,10);
+	turnE(50,-90);
+	driveE(35,7);
+	//Shooting
+	driveMotors.move(-10);
+	pros::delay(40*1000);
+	//Drive to Other Side
+	driveE(30,5);
+	turnE(50,-90);
+	driveE(75,-25);
+	turnE(50,-45);
+	driveE(100,-85);
+	//Push on right Side of Goal
+	turnE(50,-45);
+	driveE(100,-40);
+	//Drive to middle
+	driveE(35,5);
+	turnE(75,90);
+	driveE(100,40);
+	turnE(75,90);
+	driveE(100,15);
+	//Push into Middle 1
+	piston1.set_value(false);
+	piston2.set_value(false);
+	turnE(75,90);
+	driveE(100,30);
+	//Push into Middle 2
+	piston1.set_value(true);
+	piston2.set_value(true);
+	driveE(100,-30);
+	turnE(75,-90);
+	driveE(100,15);
+	piston1.set_value(false);
+	piston2.set_value(false);
+	turnE(75,90);
+	driveE(100,30);
+	//Drive to left Side
+	piston1.set_value(true);
+	piston2.set_value(true);
+	driveE(100,-30);
+	turnE(75,-90);
+	driveE(100,20);
+	turnE(75,90);
+	driveE(100,40);
+	//Push left side
+	turnE(75,-135);
+	driveE(100,30);
+
+
+
+
+
 }
 
 /**
@@ -118,6 +181,44 @@ void opcontrol() {
 
 		leftSide.move(leftV);
 		rightSide.move(rightV);
+
+		std::vector<double> sTemps = slingShotMotors.get_temperatures();
+		double averageSlingTemps = std::reduce(sTemps.begin(),sTemps.end(),0.0)/sTemps.size();
+
+		if (averageSlingTemps<55){
+			//slingshot
+			if (controller.get_digital(DIGITAL_R1)==true){
+				slingShotMotors.move(-127);
+			}
+			//intake
+			if (controller.get_digital(DIGITAL_A)==true){
+				slingShotMotors.move(127);
+			}
+		}
+		else{
+			slingShotMotors.move(0);
+		}
+
+		//turn off sling/intake
+		if (controller.get_digital(DIGITAL_B)==true || controller.get_digital(DIGITAL_R2)==true){
+			slingShotMotors.move(0);
+		}
+		//wheellock when slingshot is active
+		if (sling1.is_stopped()==0 && sling2.is_stopped()==0){
+			driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_BRAKE);
+		}
+		else{
+			driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+		}
+		//wings
+		if (controller.get_digital(DIGITAL_UP)==true){
+			piston1.set_value(false);
+			piston2.set_value(false);
+		}
+		if (controller.get_digital(DIGITAL_DOWN)==true){
+			piston1.set_value(true);
+			piston2.set_value(true);
+		}
 
 		pros::delay(20);
 	}
