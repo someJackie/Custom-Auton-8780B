@@ -1,10 +1,12 @@
 #include "main.h"
 #include "autoFunction.h"
+#include <math.h>
+#define PI 3.1415
 
 
 double wheelCir = 10.21;
 double robotDiameter = 11.5;
-double gearRatio = 0.3; //Gear Ratio Convertion Factor
+double gearRatio = 0.6; //Gear Ratio Convertion Factor
 void allStop(){
     driveMotors.move(0);
 }
@@ -57,13 +59,48 @@ void turnE(double speed, double rotate){
     leftSide.move_relative(degree,rpm);
     rightSide.move_relative(-degree,rpm);
 
-    double target = leftDown.get_position()+degree;
-    while (!((leftDown.get_position() < target+5) && (leftDown.get_position() > target-5))){
+    double target = rightDown.get_position()+degree;
+    while (!((rightDown.get_position() < target+5) && (rightDown.get_position() > target-5))){
         pros::delay(5);
     }
     timeStop(20);
 
 }
+/*
+Turns Robot a certain degrees at a certain speed in percentage
+Keeps turning Robot until 
+*/
+void turnI(double speed, double rotate){
+
+    double previousHeading = imuSensor.get_heading();
+
+    imuSensor.tare_heading();
+    double rpm = (speed/100)*127; //Accounting for the fact that move takes in voltage (-127,127) so just multiplying percentage by 127
+    //Keep spinning until imu heading matches target angle
+    if (rotate<0){
+        rotate += 360;
+    }
+
+    while (!((imuSensor.get_heading()>rotate-5) && ((imuSensor.get_heading()<rotate+5)))){
+        if (rotate>0){
+            leftSide.move(rpm);
+            rightSide.move(-rpm);
+        }
+        else{
+            leftSide.move(-rpm);
+            rightSide.move(rpm);
+        }
+        pros::delay(10);
+    }
+    double newHeading = previousHeading+imuSensor.get_heading();
+    while (newHeading>=360){
+        //reseting newHeading to domain of [0,360)
+        newHeading-=360;
+    }
+    imuSensor.set_heading(newHeading);
+    timeStop(10);
+}
+
 /*Makes robot turn in a circle with certain outside and inside radius, speed in percentage, and direction*/
 
 void curveE(double radius, double angle, double speed, double dir,double forward){
@@ -120,13 +157,27 @@ void curveE(double radius, double angle, double speed, double dir,double forward
 
 double coords[2]={0,0};
 double velocityV[2]={0,0};
+double acceleration;
+double accelRad;
 void calculateCoords(){
     while (true){
         double deltat = 0.0020;
         pros::c::imu_accel_s_t accel = imuSensor.get_accel();
         //use kinematics formula delta(x)=vt*.5at^2
+        
+        acceleration = sqrt(accel.x*accel.x+accel.y*accel.y);
+        // Still need to check if accel.y or accel.x is 0 because atan of that is undefined
+        accelRad = atan(accel.y/accel.x);
 
-        coords[0] = coords[0] + velocityV[0]*deltat+.5*accel.x*(deltat*deltat);
+        //Adjusting for principle solutions of arcTan    
+        if (accel.y<0 && accel.x<0){
+            accelRad += PI;
+        }
+        if (accel.x<0 && accel.y>0){
+            accelRad += PI;
+        }
+
+        coords[0] = coords[0] + velocityV[0]*deltat+.5*(deltat*deltat);
         coords[1] = coords[1] + velocityV[1]*deltat+.5*accel.y*(deltat*deltat);
 
         //calculate velocity (After position because initial velocity is 0 and this is the next initial velocity)

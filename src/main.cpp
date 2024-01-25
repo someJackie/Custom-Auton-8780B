@@ -1,6 +1,7 @@
 #include "main.h"
 #include <numeric>
 
+
 /**
  * A callback function for LLEMU's center button.
  *
@@ -33,6 +34,7 @@ void encoderScreen(){
 		pros::lcd::print(3,"leftUp: %f", leftUp.get_position());
 		pros::lcd::print(4,"leftMiddle: %f", leftMiddle.get_position());
 		pros::lcd::print(5,"leftDown: %f", leftDown.get_position());
+		pros::lcd::print(6,"Heading: %f",imuSensor.get_heading());
 		pros::delay(10);
 	}
 }
@@ -44,6 +46,8 @@ void OdometryScreen(){
 
 		pros::lcd::print(0,"x Velocity: %f", velocityV[0]);
 		pros::lcd::print(0,"y Velocity: %f", velocityV[1]);
+
+		pros::lcd::print(6,"Heading: %f",imuSensor.get_heading());
 	}
 }
 
@@ -59,10 +63,21 @@ void initialize() {
 
 	pros::lcd::register_btn1_cb(on_center_button);
 	driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-
+	//IMU Calibrate
+	/*
+	imuSensor.reset();
+	int time = pros::millis();
+	int iter = 0;
+	while (imuSensor.is_calibrating()){
+		pros::lcd::print(0,"IMU calibrating... %d\n",iter);
+		iter+=10;
+		pros::delay(10);
+	*/
 	pros::Task screenTask(encoderScreen);
+	
 	//pros::Task task(calculateCoords); //Experimental Coords 
 	
+
 
 }
 
@@ -96,6 +111,21 @@ void competition_initialize() {}
  * from where it left off.
  */
 void autonomous() {
+	driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_BRAKE);
+	/*
+	//Simple Push
+	driveMotors.move(-127);
+	pros::delay(1500);
+	driveMotors.move(127);
+	pros::delay(250);
+	*/
+
+	
+	//Testing autoFunctions
+	driveE(50,10);
+	turnE(50,90);
+	
+	/** 
 	//Testing Encoders
 	driveMotors.move(30);
 	pros::delay(10000); //10 Seconds
@@ -104,60 +134,61 @@ void autonomous() {
 
 	//Push Triball into goal
 	driveE(100,-30);
-	turnE(50,30);
+	turnE(50,-30);
 	driveE(100,-5);
 	//Line up shooting
 	driveE(100,5);
 	turnE(50,45);
 	driveE(50,10);
-	turnE(50,-90);
-	driveE(35,7);
+	turnE(50,90);
+	driveE(35,-7);
 	//Shooting
 	driveMotors.move(-10);
 	pros::delay(40*1000);
+	driveMotors.move(0);
 	//Drive to Other Side
 	driveE(30,5);
-	turnE(50,-90);
+	turnE(50,90);
 	driveE(75,-25);
-	turnE(50,-45);
+	turnE(50,45);
 	driveE(100,-85);
 	//Push on right Side of Goal
-	turnE(50,-45);
+	turnE(50,45);
 	driveE(100,-40);
 	//Drive to middle
 	driveE(35,5);
-	turnE(75,90);
+	turnE(75,-90);
 	driveE(100,40);
-	turnE(75,90);
+	turnE(75,-90);
 	driveE(100,15);
 	//Push into Middle 1
 	piston1.set_value(false);
 	piston2.set_value(false);
-	turnE(75,90);
+	turnE(75,-90);
 	driveE(100,30);
 	//Push into Middle 2
 	piston1.set_value(true);
 	piston2.set_value(true);
 	driveE(100,-30);
-	turnE(75,-90);
+	turnE(75,90);
 	driveE(100,15);
 	piston1.set_value(false);
 	piston2.set_value(false);
-	turnE(75,90);
+	turnE(75,-90);
 	driveE(100,30);
 	//Drive to left Side
 	piston1.set_value(true);
 	piston2.set_value(true);
 	driveE(100,-30);
 	turnE(75,-90);
-	driveE(100,20);
-	turnE(75,90);
-	driveE(100,40);
+	driveE(100,-20);
+	turnE(75,-90);
+	driveE(100,-40);
 	//Push left side
 	turnE(75,-135);
-	driveE(100,30);
+	driveE(100,-30);
 
-
+	*/
 
 
 
@@ -178,13 +209,13 @@ void autonomous() {
  */
 void opcontrol() {
 
-
+	bool wingsToggle = false;
 	while (true) {
 		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
 		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
 		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);
 		int vert = controller.get_analog(ANALOG_LEFT_Y);
-		int hori = controller.get_analog(ANALOG_LEFT_X);
+		int hori = controller.get_analog(ANALOG_RIGHT_X);
 
 		int leftV = vert+hori;
 		int rightV = vert-hori;
@@ -195,14 +226,24 @@ void opcontrol() {
 		std::vector<double> sTemps = slingShotMotors.get_temperatures();
 		double averageSlingTemps = std::reduce(sTemps.begin(),sTemps.end(),0.0)/sTemps.size();
 
-		if (averageSlingTemps<55){
+		if (averageSlingTemps<50){
 			//slingshot
 			if (controller.get_digital(DIGITAL_R1)==true){
-				slingShotMotors.move(-127);
+				if (sling1.is_stopped()){
+					slingShotMotors.move(-127);
+				}
+				else{
+					slingShotMotors.move(0);
+				}
 			}
 			//intake
-			if (controller.get_digital(DIGITAL_A)==true){
-				slingShotMotors.move(127);
+			if (controller.get_digital(DIGITAL_L1)==true){
+				if (sling1.is_stopped()){
+					slingShotMotors.move(127);
+				}
+				else{
+					slingShotMotors.move(0);
+				}
 			}
 		}
 		else{
@@ -221,6 +262,20 @@ void opcontrol() {
 			driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 		}
 		//wings
+		if (controller.get_digital(DIGITAL_R2)==true){
+			if (wingsToggle){
+				piston1.set_value(true);
+				piston2.set_value(true);
+				wingsToggle = true;
+			}
+			else{
+				piston1.set_value(false);
+				piston2.set_value(false);
+				wingsToggle = false;	
+			}
+		}
+
+		/*
 		if (controller.get_digital(DIGITAL_UP)==true){
 			piston1.set_value(false);
 			piston2.set_value(false);
@@ -229,7 +284,7 @@ void opcontrol() {
 			piston1.set_value(true);
 			piston2.set_value(true);
 		}
-
+		*/
 		pros::delay(20);
 	}
 }

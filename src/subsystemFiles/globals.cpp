@@ -29,6 +29,7 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER);
 pros::ADIDigitalIn limiter('H');
 pros::ADIDigitalOut piston1('A');
 pros::ADIDigitalOut piston2('B');
+pros::ADIDigitalOut descore('C');
 
 pros::Imu imuSensor(2);
 
