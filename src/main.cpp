@@ -37,6 +37,16 @@ void encoderScreen(){
 	}
 }
 
+void OdometryScreen(){
+	while(true){
+		pros::lcd::print(0,"x Position: %f", coords[0]);
+		pros::lcd::print(1,"y Position: %f", coords[1]);
+
+		pros::lcd::print(0,"x Velocity: %f", velocityV[0]);
+		pros::lcd::print(0,"y Velocity: %f", velocityV[1]);
+	}
+}
+
 /**
  * Runs initialization code. This occurs as soon as the program is started.
  *
