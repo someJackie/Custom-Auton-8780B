@@ -28,6 +28,8 @@ extern pros::ADIDigitalIn limiter;
 extern pros::ADIDigitalOut piston1;
 extern pros::ADIDigitalOut piston2;
 
+extern pros::ADIDigitalOut descore;
+
 extern pros::Imu imuSensor;
 
 //lemlib

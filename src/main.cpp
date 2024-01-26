@@ -17,7 +17,9 @@ void on_center_button() {
 		pros::lcd::clear_line(2);
 	}
 }
-
+/**
+ * Screen function for rightDown and LeftDown motor encoder values
+*/
 void screen(){
 	while (true){
 		pros::lcd::print(0,"rightDown: %f", rightDown.get_position());
@@ -25,7 +27,9 @@ void screen(){
 		pros::delay(10);
 	}
 }
-
+/**
+ * Screen function for all motor encoder values and for heading from IMU
+*/
 void encoderScreen(){
 	while (true){
 		pros::lcd::print(0,"rightUp: %f", rightUp.get_position());
@@ -38,7 +42,9 @@ void encoderScreen(){
 		pros::delay(10);
 	}
 }
-
+/**
+ * Screen function for custom odometry values
+*/
 void OdometryScreen(){
 	while(true){
 		pros::lcd::print(0,"x Position: %f", coords[0]);
@@ -63,7 +69,7 @@ void initialize() {
 
 	pros::lcd::register_btn1_cb(on_center_button);
 	driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
-	//IMU Calibrate
+	//IMU Calibration
 	/*
 	imuSensor.reset();
 	int time = pros::millis();
@@ -73,7 +79,9 @@ void initialize() {
 		iter+=10;
 		pros::delay(10);
 	*/
-	pros::Task screenTask(encoderScreen);
+
+	
+	pros::Task screenTask(encoderScreen); //continuously displays named screen function
 	
 	//pros::Task task(calculateCoords); //Experimental Coords 
 	
@@ -86,7 +94,10 @@ void initialize() {
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {}
+void disabled() {
+	driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+	slingShotMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+}
 
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
@@ -210,10 +221,13 @@ void autonomous() {
 void opcontrol() {
 
 	bool wingsToggle = false;
+	bool descoreToggle = false;
 	while (true) {
 		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
 		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
 		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);
+
+		//Basic Movement Code
 		int vert = controller.get_analog(ANALOG_LEFT_Y);
 		int hori = controller.get_analog(ANALOG_RIGHT_X);
 
@@ -223,6 +237,7 @@ void opcontrol() {
 		leftSide.move(leftV);
 		rightSide.move(rightV);
 
+		//Looking at the temps of the slingshot Motors
 		std::vector<double> sTemps = slingShotMotors.get_temperatures();
 		double averageSlingTemps = std::reduce(sTemps.begin(),sTemps.end(),0.0)/sTemps.size();
 
@@ -272,6 +287,17 @@ void opcontrol() {
 				piston1.set_value(false);
 				piston2.set_value(false);
 				wingsToggle = false;	
+			}
+		}
+		//descore
+		if (controller.get_digital(DIGITAL_L2)==true){
+			if (descoreToggle){
+				descore.set_value(true);
+				descoreToggle = true;
+			}
+			else{
+				descore.set_value(false);
+				descoreToggle = false;
 			}
 		}
 
