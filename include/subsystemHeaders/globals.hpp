@@ -25,8 +25,8 @@ extern pros::Motor_Group slingShotMotors;
 extern pros::Controller controller;
 
 extern pros::ADIDigitalIn limiter;
-extern pros::ADIDigitalOut piston1;
-extern pros::ADIDigitalOut piston2;
+extern pros::ADIDigitalOut pistonLeft;
+extern pros::ADIDigitalOut pistonRight;
 
 extern pros::ADIDigitalOut descore;
 

@@ -58,6 +58,46 @@ void OdometryScreen(){
 }
 
 /**
+ * Toggle code for pnuematics that can run in the background so that extending pnuematics doesn't interrupt driving
+*/
+void pToggle(){
+	bool wingsToggle = true;
+	bool descoreToggle = true;
+	while(true){
+		//wings
+		if (controller.get_digital(DIGITAL_R2)==true){
+			if (wingsToggle){
+				pistonLeft.set_value(true);
+				pistonRight.set_value(true);
+				wingsToggle = false;
+				pros::delay(500);
+			}
+			else{
+				pistonLeft.set_value(false);
+				pistonRight.set_value(false);
+				wingsToggle = true;
+				pros::delay(500);	
+			}
+		}
+		
+		//descore
+		if (controller.get_digital(DIGITAL_L2)==true){
+			if (descoreToggle){
+				descore.set_value(true);
+				descoreToggle = false;
+				pros::delay(500);
+			}
+			else{
+				descore.set_value(false);
+				descoreToggle = true;
+				pros::delay(500);
+			}
+		}
+		
+	}
+}
+
+/**
  * Runs initialization code. This occurs as soon as the program is started.
  *
  * All other competition modes are blocked by initialize; it is recommended
@@ -69,24 +109,14 @@ void initialize() {
 
 	pros::lcd::register_btn1_cb(on_center_button);
 	driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
+	sylib::initialize();
 	//IMU Calibration
-	/*
-	imuSensor.reset();
-	int time = pros::millis();
-	int iter = 0;
-	while (imuSensor.is_calibrating()){
-		pros::lcd::print(0,"IMU calibrating... %d\n",iter);
-		iter+=10;
-		pros::delay(10);
-	*/
 
-	
+	imuSensor.reset(true);
+
 	pros::Task screenTask(encoderScreen); //continuously displays named screen function
 	
 	//pros::Task task(calculateCoords); //Experimental Coords 
-	
-
-
 }
 
 /**
@@ -123,86 +153,17 @@ void competition_initialize() {}
  */
 void autonomous() {
 	driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_BRAKE);
-	/*
-	//Simple Push
-	driveMotors.move(-127);
-	pros::delay(1500);
-	driveMotors.move(127);
-	pros::delay(250);
-	*/
-
+	slingShotMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 	
-	//Testing autoFunctions
-	driveE(50,10);
-	turnE(50,90);
-	
-	/** 
-	//Testing Encoders
-	driveMotors.move(30);
-	pros::delay(10000); //10 Seconds
-	driveMotors.move(0);
-	//Skills Auton Path
-
-	//Push Triball into goal
-	driveE(100,-30);
-	turnE(50,-30);
-	driveE(100,-5);
-	//Line up shooting
-	driveE(100,5);
-	turnE(50,45);
-	driveE(50,10);
-	turnE(50,90);
-	driveE(35,-7);
-	//Shooting
-	driveMotors.move(-10);
-	pros::delay(40*1000);
-	driveMotors.move(0);
-	//Drive to Other Side
-	driveE(30,5);
-	turnE(50,90);
-	driveE(75,-25);
-	turnE(50,45);
-	driveE(100,-85);
-	//Push on right Side of Goal
-	turnE(50,45);
-	driveE(100,-40);
-	//Drive to middle
-	driveE(35,5);
-	turnE(75,-90);
-	driveE(100,40);
-	turnE(75,-90);
-	driveE(100,15);
-	//Push into Middle 1
-	piston1.set_value(false);
-	piston2.set_value(false);
-	turnE(75,-90);
-	driveE(100,30);
-	//Push into Middle 2
-	piston1.set_value(true);
-	piston2.set_value(true);
-	driveE(100,-30);
-	turnE(75,90);
-	driveE(100,15);
-	piston1.set_value(false);
-	piston2.set_value(false);
-	turnE(75,-90);
-	driveE(100,30);
-	//Drive to left Side
-	piston1.set_value(true);
-	piston2.set_value(true);
-	driveE(100,-30);
-	turnE(75,-90);
-	driveE(100,-20);
-	turnE(75,-90);
-	driveE(100,-40);
-	//Push left side
-	turnE(75,-135);
-	driveE(100,-30);
-
-	*/
-
-
-
+	//driveE(90, -50);
+	//sameColorGoal();
+	//sameColorGoal2();
+	//oppositeColorGoal();
+	//simplePush();
+	//autonTesting();
+	//simpleSkills();
+	//encodersTest();
+	skillsAuton();
 }
 
 /**
@@ -219,9 +180,7 @@ void autonomous() {
  * task, not resume it from where it left off.
  */
 void opcontrol() {
-
-	bool wingsToggle = false;
-	bool descoreToggle = false;
+	pros::Task toggleTask(pToggle);
 	while (true) {
 		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
 		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
@@ -238,8 +197,7 @@ void opcontrol() {
 		rightSide.move(rightV);
 
 		//Looking at the temps of the slingshot Motors
-		std::vector<double> sTemps = slingShotMotors.get_temperatures();
-		double averageSlingTemps = std::reduce(sTemps.begin(),sTemps.end(),0.0)/sTemps.size();
+		double averageSlingTemps = (sling1.get_temperature() + sling2.get_temperature())/2;
 
 		if (averageSlingTemps<50){
 			//slingshot
@@ -277,40 +235,55 @@ void opcontrol() {
 			driveMotors.set_brake_modes(pros::E_MOTOR_BRAKE_COAST);
 		}
 		//wings
+		/* Toggle
 		if (controller.get_digital(DIGITAL_R2)==true){
 			if (wingsToggle){
 				piston1.set_value(true);
 				piston2.set_value(true);
-				wingsToggle = true;
+				wingsToggle = false;
+				pros::delay(100);
 			}
 			else{
 				piston1.set_value(false);
 				piston2.set_value(false);
-				wingsToggle = false;	
+				wingsToggle = true;
+				pros::delay(100);	
 			}
 		}
+		*/
 		//descore
+		/* Toggle
 		if (controller.get_digital(DIGITAL_L2)==true){
 			if (descoreToggle){
 				descore.set_value(true);
-				descoreToggle = true;
+				descoreToggle = false;
+				pros::delay(100);
 			}
 			else{
 				descore.set_value(false);
-				descoreToggle = false;
+				descoreToggle = true;
+				pros::delay(100);
 			}
 		}
-
-		/*
+		*/
+		//descore
+		if (controller.get_digital(DIGITAL_RIGHT)){
+			descore.set_value(true);
+		}
+		if (controller.get_digital(DIGITAL_LEFT)){
+			descore.set_value(false);
+		}
+		
+		//wings
 		if (controller.get_digital(DIGITAL_UP)==true){
-			piston1.set_value(false);
-			piston2.set_value(false);
+			pistonLeft.set_value(true);
+			pistonRight.set_value(true);
 		}
 		if (controller.get_digital(DIGITAL_DOWN)==true){
-			piston1.set_value(true);
-			piston2.set_value(true);
+			pistonLeft.set_value(false);
+			pistonRight.set_value(false);
 		}
-		*/
+		
 		pros::delay(20);
 	}
 }

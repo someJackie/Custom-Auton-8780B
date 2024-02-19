@@ -5,9 +5,10 @@
 
 
 double wheelCir = 10.21;
-double robotDiameter = 11.5;
-double gearRatio = 0.6; //Gear Ratio Convertion Factor
+double robotDiameter = 10.75;
+double gearRatio = 0.5; //Gear Ratio Convertion Factor real = 0.6
 void allStop(){
+    //stops motors
     driveMotors.move(0);
 }
 
@@ -21,57 +22,65 @@ void timeStop(double tiempo){
     pros::delay(tiempo);
 }
 
-/*Drives forward/backwards for a certain distance in inches and at a certain percentage of full speed*/
-
-void driveE(double speed, double distance){
+/**
+ * Drives forward/backwards for a certain distance in inches and at a certain percentage of full speed
+ * */
+void driveE(double speed, double distance, double delayTiempo){
     //speed = speed percentage 
     //distance = distance in inches
-    pros::lcd::clear();
-    pros::lcd::set_text(1, "driveE");
+    //delayTiempo = delay in milliseconds
+    pros::lcd::set_text(7, "driveE");
     double degree =(distance/wheelCir)*360*gearRatio;
     double rpm = 2*speed;
     if (speed>100 || speed<0){
         return;
     }
-    driveMotors.move_relative(degree,rpm);
     
+    driveMotors.tare_position();
     double target = rightDown.get_position()+degree;
-    while (!((rightDown.get_position() < target+5) && (rightDown.get_position() > target-5))){
-        pros::lcd::set_text(1,"DrivingE");
+    driveMotors.move_relative(degree,rpm);
+    pros::lcd::set_text(7,"DrivingE");
+    while (!((rightDown.get_position() < target+10) && (rightDown.get_position() > target-10))){
         pros::delay(5);
     }
-    timeStop(20);
+    timeStop(delayTiempo);
+    pros::lcd::set_text(7,"Done");
     
 }
-/*Turns robot a certain degrees at a certain speed in percentage*/
-
-void turnE(double speed, double rotate){
+/**
+ * Turns robot a certain degrees at a certain speed in percentage
+ * */
+void turnE(double speed, double rotate, double delayTiempo){
     //speed = speed percentage
     //rotate = degrees Negative: CounterClockWise | Positive ClockWise
+    //delayTiempo = delay in milliseconds
     //diameter = 11.5 inches
 
     if (speed>100 || speed<0){
         return;
     }  
-    double degree = 3.538*(rotate/2)*gearRatio; // diameter of robot / wheel diameter
+    double degree = 3.307*rotate*gearRatio; //((33.772*(rotate/360))/3.25)*360*gearRatio; // diameter of robot / wheel diameter
     double rpm = 2*speed;
 
+    driveMotors.tare_position();
+    double target = leftDown.get_position()+degree;
     leftSide.move_relative(degree,rpm);
     rightSide.move_relative(-degree,rpm);
 
-    double target = rightDown.get_position()+degree;
-    while (!((rightDown.get_position() < target+5) && (rightDown.get_position() > target-5))){
+    while (!((leftDown.get_position() < target+5) && (leftDown.get_position() > target-5))){
+        pros::lcd::set_text(7,"TurningE");
         pros::delay(5);
     }
-    timeStop(20);
-
+    timeStop(delayTiempo);
+    pros::lcd::set_text(7,"Done");
 }
-/*
-Turns Robot a certain degrees at a certain speed in percentage
-Keeps turning Robot until 
+/**
+ * Turns Robot a certain degrees at a certain speed in percentage
+ * Keeps turning Robot until imu has sensed that it has turned the target amount of degrees
 */
 void turnI(double speed, double rotate){
-
+    //speed = speed in percentage
+    //rotate = target degrees rotate 
     double previousHeading = imuSensor.get_heading();
 
     imuSensor.tare_heading();
@@ -81,49 +90,52 @@ void turnI(double speed, double rotate){
         rotate += 360;
     }
 
-    while (!((imuSensor.get_heading()>rotate-5) && ((imuSensor.get_heading()<rotate+5)))){
-        if (rotate>0){
-            leftSide.move(rpm);
-            rightSide.move(-rpm);
-        }
-        else{
-            leftSide.move(-rpm);
-            rightSide.move(rpm);
-        }
+    if (rotate>0){
+        leftSide.move(rpm);
+        rightSide.move(-rpm);
+    }
+    else{
+        leftSide.move(-rpm);
+        rightSide.move(rpm);
+    }
+    while (!((imuSensor.get_heading()>rotate-3) && ((imuSensor.get_heading()<rotate+3)))){
         pros::delay(10);
     }
+    timeStop(10);
     double newHeading = previousHeading+imuSensor.get_heading();
     while (newHeading>=360){
         //reseting newHeading to domain of [0,360)
         newHeading-=360;
     }
     imuSensor.set_heading(newHeading);
-    timeStop(10);
 }
 
 /*Makes robot turn in a circle with certain outside and inside radius, speed in percentage, and direction*/
 
-void curveE(double radius, double angle, double speed, double dir,double forward){
+void curveE(double radius, double angle, double speed, double dir ,double forward, double delayTiempo){
     //out = outer arc inches
     //in = inner arc
     //speed = speed percentage
-    //dir = direction +-
-    //left negative right positive
+    //dir = horizontal + right | - left
+    //forward = verticle + forward | - left
     if (speed>100 || speed<0){
         return;
     }
     if (dir!= 1 || dir!=-1){
         return;
     }
+    if (forward!= 1 || forward!=-1){
+        return;
+    }
 
     double in = 2*radius*3.14*(angle/360); //How much inner wheels have to travel
-    double out = 2*(radius+10.5)*3.14*(angle/360); // How much outer wheels have to travel
+    double out = 2*(radius+10.75)*3.14*(angle/360); // How much outer wheels have to travel
     
-    double outDegree = (out/wheelCir)*360*gearRatio;
-    double inDegree = (in/wheelCir)*360*gearRatio;
+    double outDegree = (out/wheelCir)*360*gearRatio*forward;
+    double inDegree = (in/wheelCir)*360*gearRatio*forward;
     double rpm = speed*2;
     double tiempo = (out/wheelCir)/(rpm);
-    double speedIn = (in/wheelCir)/tiempo;
+    double speedIn =((in/wheelCir))/tiempo;
 
     if (dir==1){
         //clockwise
@@ -132,10 +144,10 @@ void curveE(double radius, double angle, double speed, double dir,double forward
         rightSide.move_relative(outDegree,rpm); 
 
         double target = rightDown.get_position()+(outDegree*forward);
-        while (!(rightDown.get_position() < target+5) && (rightDown.get_position() > target-5)){
-            pros::delay(2);
+        while (!((rightDown.get_position() < target+5) && (rightDown.get_position() > target-5))){
+            pros::delay(5);
         }
-        timeStop(20);
+        timeStop(delayTiempo);
     }
     if (dir==-1){
         //counter-clockwise
@@ -144,10 +156,10 @@ void curveE(double radius, double angle, double speed, double dir,double forward
         rightSide.move_relative(inDegree,speedIn);
 
         double target = leftDown.get_position()+(outDegree*forward);
-        while (!(leftDown.get_position() < target+5) && (leftDown.get_position() > target-5)){
-            pros::delay(2);
+        while (!((leftDown.get_position() < target+5) && (leftDown.get_position() > target-5))){
+            pros::delay(5);
         }
-        timeStop(20);
+        timeStop(delayTiempo);
     }
 
     
